@@ -176,10 +176,30 @@ tribble(
 
 * Suppose you want to build a model to predict how long a senator is expected to live after being elected. Which rows should you delete from your data? Why? (There is no right answer to this question!)
 
+```{r}
+x_pred <- x %>%
+  group_by(first_name, last_name) %>%
+  mutate(win_pct = mean(election_result == "Win") * 100) %>%
+  ungroup() %>%
+  filter(win_pct > 0,
+         year > 1945,
+         abs(win_margin) <= 5)
+```
 
 * Scenario 2 (Causal):
 
 * Now imagine you want to estimate the causal effect of winning an election on how long a candidate lives after the election.  What filtering strategy and variables will you use? Discuss with your group, record your answer, and be ready to share your reasoning. Once you filter your data, assign the result to a data frame named `x_causal`.
+
+
+```{r}
+x_causal <- governors %>%
+  filter(status == "Challenger",
+         !is.na(lived_after),
+         year > 1945,
+         abs(win_margin) <= 5) %>%
+  mutate(election_result = ifelse(win_margin > 0, "Win", "Lose"))
+```
+
 
 ## Model Estimation
 
@@ -187,9 +207,35 @@ tribble(
 
 * Estimate a regression model where `lived_after` is the outcome and `sex` is the predictor. Display the model results and confidence intervals. Interpret the estimate and what its confidence interval tells you. For now just use the original `x` data set. 
 
+```{r}
+linear_reg() |> fit(lived_after ~ sex, data = x) |> 
+  tidy(conf.int = TRUE)
+```
+
+There’s some evidence that men may live longer after an election than women, but the result is not statistically significant. The uncertainty is too large to confidently claim a real difference based on this model.
+
 * Now let’s return to the scenario-specific models. Fit two linear regression models using the outcome `lived_after`, data from either `x_pred` or `x_causal`, and several covariates. Adjust your model until you find a version that seems accurate and useful for your scenario. 
 
 * Assign the fitted model to either `fit_pred` or `fit_causal` as appropriate.
 
 * After fitting your models, view the output with confidence intervals. Are the covariates statistically significant. Interpret what each covariate’s estimate means in context.
 
+```{r}
+fit_pred <- linear_reg() |> fit(lived_after ~ election_result + win_margin + election_age + party, data = x_pred) |> tidy(conf.int = TRUE)
+```
+
+Winning is associated with a strong and significant boost in post-election life expectancy (~9.5 years).
+Older age at election consistently predicts shorter post-election lifespan.
+Narrow election wins predict longer life after election than large-margin wins.
+Republicans tend to live longer than Democrats, even after controlling for other variables.
+Third-party candidates show worse outcomes, but uncertainty is high (wide confidence interval, p ≈ 0.08).
+
+```{r}
+fit_causal <- linear_reg() |> 
+  fit(lived_after ~ election_result + win_margin + election_age + party, data = x_causal) |> tidy(conf.int = TRUE)
+```
+
+Winning a close election has a positive and significant effect: ~8 more years lived after election.
+Older candidates live significantly fewer years after the election.
+Republican challengers may live longer than Democrats, even after accounting for win status and age.
+Third-party candidates seem to live less, but the evidence is not strong.
