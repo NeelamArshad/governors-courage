@@ -184,6 +184,7 @@ x_pred <- x %>%
   filter(win_pct > 0,
          year > 1945,
          abs(win_margin) <= 5)
+x_pred
 ```
 
 * Scenario 2 (Causal):
@@ -198,6 +199,7 @@ x_causal <- governors %>%
          year > 1945,
          abs(win_margin) <= 5) %>%
   mutate(election_result = ifelse(win_margin > 0, "Win", "Lose"))
+x_causal
 ```
 
 
@@ -225,6 +227,7 @@ Note that we can't include election_result for predictive model because it is al
 
 ```{r}
 fit_pred <- linear_reg() |> fit(lived_after ~ win_margin + election_age + party, data = x_pred) |> tidy(conf.int = TRUE)
+fit_pred
 ```
 
 Age at election is strongly predictive: Older governors naturally lived fewer years after election.
@@ -235,6 +238,7 @@ The effect for third-party candidates is large and negative but with wide confid
 ```{r}
 fit_causal <- linear_reg() |> 
   fit(lived_after ~ election_result + win_margin + election_age + party, data = x_causal) |> tidy(conf.int = TRUE)
+fit_causal
 ```
 
 Winning a close election has a positive and significant effect: ~8 more years lived after election.
